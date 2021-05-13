@@ -1,5 +1,3 @@
-require 'pp'
-
 class Production
   attr_reader :symbol, :production, :next_symbol_index, :origin
 
@@ -36,6 +34,8 @@ end
 
 class CFL
   def initialize (terminals, rules, initial_symbol)
+    @dummy_symbol = '@'
+
     @terminals = terminals
     @rules = rules
     @initial_symbol = initial_symbol
@@ -55,6 +55,16 @@ class CFL
 
   def is_terminal? (symbol)
     @terminals.include?(symbol)
+  end
+
+  def already_include? (production, set)
+    set.any? {|pdr| production.equals_to?(pdr)}
+  end
+
+  def add_to_set (production, set)
+    unless self.already_include?(production, set)
+      set.push(production)
+    end
   end
 
   def complete (production, complete_in)
@@ -82,19 +92,11 @@ class CFL
     }
   end
 
-  def already_include? (production, set)
-    set.any? {|pdr| production.equals_to?(pdr)}
-  end
-
-  def add_to_set (production, set)
-    unless self.already_include?(production, set)
-      set.push(production)
-    end
-  end
-
   def recognize (expression)
     self.init(expression)
-    self.add_to_set(self.create_new_production('@', @initial_symbol, 0), @productions[0])
+
+    initial_production = self.create_new_production(@dummy_symbol, @initial_symbol, 0)
+    self.add_to_set(initial_production, @productions[0])
 
     for symbol_index in (0..expression.length) do
       @productions[symbol_index].each {|production|
@@ -110,7 +112,7 @@ class CFL
       }
     end
 
-    final_production = self.create_new_production('@', @initial_symbol, 0)
+    final_production = initial_production.clone
     final_production.scan_char
     @productions[expression.length].any? {|production|
       production.equals_to?(final_production)
